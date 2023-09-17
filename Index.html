@@ -1,0 +1,362 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title id="pageTitle">Share news even if it's banned (until this is blocked)</title>
+  <style>
+    /* Add CSS style to prevent wrapping of dropdown options */
+    #articleSelector option {
+      width: 100%;
+      box-sizing: border-box;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    /* Style for the dropdown container */
+    #dropdownContainer {
+      position: absolute;
+      z-index: 1;
+      background-color: white;
+      border: 1px solid #ccc;
+      max-height: 200px;
+      max-width: 400px;      
+      margin-left: 90px;
+      overflow-y: auto;
+      display: none; /* Initially hide the dropdown */
+      top: calc(100% - 10px); /* Position below the search box */
+      left: 0;
+      width: 500px;
+    }
+
+    /* Position the dropdown above the search box */
+    #dropdownContainer.open {
+      display: block; /* Display the dropdown when open */
+    }
+
+    .responsive-iframe {
+      display: block;
+      width: 99%;
+      height: 90vh; /* Adjust the height as needed */
+      border: 0 none;
+      overflow: hidden;
+      bottom: 0;
+      top: var(--header-height); /* Use a CSS variable for the header height */
+    }
+
+    #headerMessage {
+      display: flex;
+      font-weight: bold;
+      margin-right: 10px;
+    }
+
+    #contentUrl {
+      display: none;
+      margin-left: 10px;
+    }
+
+    #headerMessage a {
+      margin-left: 10px;
+      margin-right: 10px;
+    }
+
+    /* Style for the Facebook sharing button */
+    #shareOnFacebook {
+      display: inline-block;
+      padding: 5px 10px;
+      background-color: #1877f2;
+      color: #fff;
+      border: none;
+      cursor: pointer;
+      max-width: 150px
+    }
+
+    /* Adjust the width of the search box */
+    #searchBox {
+      max-width: 200px; /* You can adjust this value */
+    }
+
+    .custom-button {
+      display: inline-block;
+      padding: 5px 10px;
+      background-color: #1877f2;
+      color: #fff;
+      border: none;
+      cursor: pointer;
+    }
+    
+    #logoText {
+  margin-right: 10px; /* Add space to the right of "UNBAN.CA" */
+}
+
+  </style>
+</head>
+<body style="padding-top: 50px;">
+  <header style="position: fixed; top: 0; left: 0; width: 100%; background-color: #f2f2f2; padding: 10px; display: flex; flex-direction: column;">
+    <div id="headerMessage" style="display: flex; align-items: center; margin-right: 10px;"> <span id="logoText">UNBAN.CA</span> <!-- Rest of your code -->
+      
+
+      <input type="text" id="searchBox" placeholder="Search articles" onclick="clearSearchBox()" oninput="filterDropdown()" onfocus="openDropdown()"> 
+
+    <div id="dropdownContainer">
+      <select id="articleSelector" onchange="changeIframeContent()">
+        <option value="">Select an article</option>
+      </select>
+    </div>
+      <span id="contentUrl" style="display: none; margin-left: 10px;"></span>
+      <a href="http://unban.ca">
+        <button class="custom-button">Add an article</button>
+      </a>
+      
+      
+      <span style="margin-right: 10px;"></span>
+
+      <!-- Facebook sharing button -->
+      <button id="shareOnFacebook" onclick="shareOnFacebook()">Share on Facebook</button>
+      
+      
+    </div>
+
+    
+  </header>
+
+  <iframe id="articleFrame" class="responsive-iframe" src="" frameborder="0" allowfullscreen allow="geolocation"></iframe>
+
+  <script>
+
+    // Function to fetch MySQL data
+async function fetchMySQLData() {
+  try {
+    const response = await fetch('get_articles.php');
+    const data = await response.json();
+    return data;
+  } catch (error) {
+    console.error('Error fetching data from MySQL:', error);
+    return [];
+  }
+}
+
+// Function to update the dropdown with new articles
+async function updateDropdown() {
+  const articleSelector = document.getElementById('articleSelector');
+
+  try {
+    const mysqlData = await fetchMySQLData();
+
+    mysqlData.forEach((row) => {
+      const articleTitle = row.Title; // Make sure to use the correct case for 'Title'
+      const articleUrl = row.URL; // Use the correct case for 'URL'
+
+      // Check if the article already exists in the dropdown
+      const existingOption = Array.from(articleSelector.options).find((option) => option.value === articleUrl);
+
+      if (!existingOption) {
+        const option = document.createElement('option');
+        option.value = articleUrl;
+        option.textContent = articleTitle;
+        articleSelector.appendChild(option);
+      }
+    });
+  } catch (error) {
+    console.error('Error updating dropdown with new articles:', error);
+  }
+}
+
+// Set up a timer to periodically update the dropdown (every 5 seconds)
+setInterval(updateDropdown, 5000); // 5000 milliseconds = 5 seconds
+
+
+    async function populateDropdown() {
+      const articleSelector = document.getElementById('articleSelector');
+
+      try {
+        const mysqlData = await fetchMySQLData();
+
+        mysqlData.forEach((row) => {
+          const articleTitle = row.Title;
+          const articleUrl = row.URL;
+
+          const option = document.createElement('option');
+          option.value = articleUrl; // Use the URL as the value
+          option.textContent = articleTitle;
+          articleSelector.appendChild(option);
+        });
+
+        preselectArticle(); // Preselect the article after populating the dropdown
+      } catch (error) {
+        console.error('Error fetching data from MySQL:', error);
+      }
+    }
+
+    // Function to share the current page on Facebook
+function shareOnFacebook() {
+  var d = document,
+    f = 'http://www.facebook.com/share',
+    l = d.location,
+    e = encodeURIComponent,
+    pageTitle = document.getElementById('pageTitle').textContent; // Get the dynamically updated page title
+
+  // Include the pageTitle in the shared content
+  var p = '.php?src=bm&v=4&i=1259185171&u=' + e(l.href) + '&t=' + e(pageTitle);
+
+  try {
+    if (!/^(.*\.)?facebook\.[^.]*$/.test(l.host)) throw (0);
+    share_internal_bookmarklet(p);
+  } catch (z) {
+    a = function () {
+      if (!window.open(f + 'r' + p, 'sharer', 'toolbar=0,status=0,resizable=1,width=626,height=436'))
+        l.href = f + p;
+    };
+    if (/Firefox/.test(navigator.userAgent)) setTimeout(a, 0);
+    else {
+      a();
+    }
+  }
+  void (0);
+}
+
+
+
+
+
+    
+    
+  
+
+    function changeIframeContent() {
+      const articleSelector = document.getElementById('articleSelector');
+      const articleFrame = document.getElementById('articleFrame');
+      const contentUrl = document.getElementById('contentUrl');
+
+      const selectedUrl = articleSelector.value;
+      const selectedOption = articleSelector.options[articleSelector.selectedIndex];
+      const selectedTitle = selectedOption.textContent;
+      const selectedUrlFromCSV = selectedOption.value; // Get the URL directly from the CSV data
+
+      contentUrl.innerHTML = '<button onclick="window.open(\'' + selectedUrlFromCSV + '\', \'_blank\')" class="custom-button" style="margin-left: 10px;">Go to original article</button>';
+contentUrl.style.display = 'block'; // Show the content URL
+
+      if (selectedUrl) {
+        if (selectedUrl.endsWith('/')) {
+          // Set the iframe source directly
+          articleFrame.src = 'https://www.unban.ca/submit.html'; // Use a valid URL
+          
+          // Update the page title dynamically based on the selected article title
+    document.getElementById('pageTitle').textContent = selectedTitle;
+        } else {
+          // Extract the source from the URL parameter
+          const urlParams = new URL(selectedUrl); // Parse the selected URL
+          const source = urlParams.searchParams.get('article');
+          if (source) {
+            articleFrame.src = source;
+            contentUrl.style.display = 'block'; // Show the content URL
+            contentUrl.textContent = 'Go to original article';
+            document.title = selectedTitle || "Share news even if it's banned (until this is blocked)";
+            
+            // Set a default page title when no article is selected
+    document.getElementById('pageTitle').textContent = "Share news even if it's banned (until this is blocked)";
+          } else {
+            articleFrame.src = selectedUrl;
+          }
+        }
+
+        closeDropdown();
+        document.getElementById('searchBox').value = selectedTitle;
+
+        if (selectedTitle) {
+          document.title = selectedTitle;
+        } else {
+          document.title = "Share news even if it's banned (until this is blocked)";
+        }
+
+        // Update the URL to include the selected article URL as a parameter
+        window.history.pushState({}, '', `?article=${selectedUrl}`);
+      } else {
+        articleFrame.src = '';
+      }
+    }
+
+    function filterDropdown() {
+      const searchBox = document.getElementById('searchBox');
+      const searchTerm = searchBox.value.toLowerCase();
+
+      const articleSelector = document.getElementById('articleSelector');
+      const options = articleSelector.options;
+
+      for (let i = 0; i < options.length; i++) {
+        const optionText = options[i].textContent.toLowerCase();
+        options[i].style.display = optionText.includes(searchTerm) ? 'block' : 'none';
+      }
+
+      openDropdownContainer();
+    }
+
+    function openDropdown() {
+      const articleSelector = document.getElementById('articleSelector');
+      articleSelector.size = articleSelector.options.length;
+
+      openDropdownContainer();
+    }
+
+    function openDropdownContainer() {
+      const dropdownContainer = document.getElementById('dropdownContainer');
+      dropdownContainer.classList.add('open');
+    }
+
+    function closeDropdown() {
+      const articleSelector = document.getElementById('articleSelector');
+      articleSelector.size = 1;
+
+      const dropdownContainer = document.getElementById('dropdownContainer');
+      dropdownContainer.classList.remove('open');
+    }
+
+    function preselectArticle() {
+      const articleSelector = document.getElementById('articleSelector');
+      const urlParams = new URLSearchParams(window.location.search);
+      const articleUrl = urlParams.get('article');
+
+      if (articleUrl) {
+        articleSelector.value = articleUrl;
+        changeIframeContent();
+        document.getElementById('pageTitle').textContent = articleSelector.options[articleSelector.selectedIndex].textContent; // Update the page title
+      } else {
+        // Set a default URL here
+        const defaultUrl = 'https://unban.ca/submit.html'; // Change this to your desired default URL
+        articleFrame.src = defaultUrl; // Set the default URL for the iframe
+        document.getElementById('pageTitle').textContent = "Share news even if it's banned (until this is blocked)"; // Update the page title with the default
+      }
+    }
+
+    function clearSearchBox() {
+      document.getElementById('searchBox').value = ''; // Clear the search box
+    }
+
+    // Function to calculate and set the iframe height
+    function setIframeHeight() {
+      const windowHeight = window.innerHeight;
+      const headerHeight = document.querySelector('header').offsetHeight;
+      const iframe = document.getElementById('articleFrame');
+
+      const iframeHeight = windowHeight - headerHeight;
+      iframe.style.height = `${iframeHeight}px`;
+    }
+
+    // Call the function when the page loads
+    window.addEventListener('load', setIframeHeight);
+
+    // Call the function when the window is resized
+    window.addEventListener('resize', setIframeHeight);
+
+    // Function to calculate and set the header height as a CSS variable
+    function setHeaderHeightVariable() {
+      const headerHeight = document.querySelector('header').offsetHeight;
+      document.documentElement.style.setProperty('--header-height', `${headerHeight}px`);
+    }
+
+    // Call the function when the page loads
+    window.addEventListener('load', setHeaderHeightVariable);
+
+    populateDropdown(); // Call the function to populate the dropdown with MySQL data
+  </script>
+</body>
+</html>
